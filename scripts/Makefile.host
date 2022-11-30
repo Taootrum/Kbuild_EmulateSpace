@@ -31,6 +31,7 @@
 # Note: Shared libraries consisting of C++ files are not supported
 
 __hostprogs := $(sort $(hostprogs-y))
+# ##$(info __hostprogs=$(__hostprogs))
 
 # C code
 # Executables compiled from a single .c file

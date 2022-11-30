@@ -8,6 +8,9 @@
 # o  use make's built-in rules and variables
 #    (this increases performance and avoids hard-to-debug behaviour);
 # o  print "Entering directory ...";
+
+##   -r, --no-builtin-rules      Disable the built-in implicit rules.
+##   -R, --no-builtin-variables  Disable the built-in variable settings.
 MAKEFLAGS += -rR --no-print-directory
 
 
@@ -49,6 +52,7 @@ ifeq ($(KBUILD_SRC),)
 ifeq ("$(origin O)", "command line")
   KBUILD_OUTPUT := $(O)
 endif
+KBUILD_OUTPUT := out
 
 ifeq ("$(origin W)", "command line")
   export KBUILD_ENABLE_EXTRA_GCC_CHECKS := $(W)
@@ -57,6 +61,7 @@ endif
 # Cancel implicit rules on top Makefile
 $(CURDIR)/Makefile Makefile: ;
 
+# 如果指定了重定向输出目录
 ifneq ($(KBUILD_OUTPUT),)
 # Invoke a second make in the output directory, passing relevant variables
 # check that the output directory actually exists
@@ -67,9 +72,18 @@ $(if $(KBUILD_OUTPUT),, \
 
 PHONY += $(MAKECMDGOALS) sub-make
 
+#$(info "MAKECMDGOALS = " $(MAKECMDGOALS))
+
+# filter-out: $(filter-out PATTERN...,TEXT) 
+# 过滤掉字串“TEXT”中所有符合模式 “PATTERN”的单词，保留所有不符合此模式的单词。
+# 可以有多个模式。存在多个模式时，模式表达式之间使用空格分割。
+# https://blog.csdn.net/zhoudengqing/article/details/41777993
 $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
 	$(Q)@:
 
+# make -C /home/tshi/Tool/Kbuild/2/Kbuild/out  
+# KBUILD_SRC=/home/tshi/Tool/Kbuild/2/Kbuild -f 
+# /home/tshi/Tool/Kbuild/2/Kbuild/Makefile
 sub-make: FORCE
 	$(if $(KBUILD_VERBOSE:1=),@)$(MAKE) -C $(KBUILD_OUTPUT) \
 	KBUILD_SRC=$(CURDIR) \
@@ -95,6 +109,12 @@ src		:= $(srctree)
 obj		:= $(objtree)
 
 VPATH		:= $(srctree)
+
+#$(info srctree=$(srctree))
+#$(info objtree=$(objtree))
+#$(info src=$(src))
+#$(info obj=$(obj))
+#$(info VPATH=$(VPATH))
 
 export srctree objtree VPATH
 
@@ -144,16 +164,20 @@ else
   Q = @
 endif
 
+# 如果用户正在运行 make -s（静默模式），则禁止回显命令
 # If the user is running make -s (silent mode), suppress echoing of
 # commands
 
 ifneq ($(findstring s,$(MAKEFLAGS)),)
   quiet=silent_
 endif
+#$(info MAKEFLAGS=$(MAKEFLAGS))
 
 export quiet Q KBUILD_VERBOSE
 
 
+#   -I DIRECTORY, --include-dir=DIRECTORY
+#                             Search DIRECTORY for included makefiles.
 # Look for make include files relative to root of kernel src
 MAKEFLAGS += --include-dir=$(srctree)
 
@@ -178,7 +202,7 @@ PERL		= perl
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_KERNEL	=
+CFLAGS_KERNEL	= -O2
 AFLAGS_KERNEL	=
 
 
@@ -187,6 +211,7 @@ AFLAGS_KERNEL	=
 LINUXINCLUDE    := -Iinclude \
                    $(if $(KBUILD_SRC), -I$(srctree)/include) \
                    -include include/generated/autoconf.h
+#$(info "LINUXINCLUDE = " $(LINUXINCLUDE))
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
@@ -200,8 +225,8 @@ KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
-KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
-KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+# KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
+# KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP
@@ -220,7 +245,7 @@ RCS_FIND_IGNORE := \( -name SCCS -o -name BitKeeper -o -name .svn -o -name CVS -
 
 # ===========================================================================
 # Rules shared between *config targets and build targets
-
+# #$(info "build = " $(build))
 # Basic helpers built in scripts/
 PHONY += scripts_basic
 scripts_basic:
@@ -235,7 +260,6 @@ PHONY += outputmakefile
 # output directory.
 outputmakefile:
 ifneq ($(KBUILD_SRC),)
-	$(Q)ln -fsn $(srctree) source
 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/mkmakefile \
 	    $(srctree) $(objtree) $(VERSION) $(PATCHLEVEL)
 endif
@@ -258,6 +282,10 @@ config-targets := 0
 mixed-targets  := 0
 dot-config     := 1
 
+#$(info "MAKECMDGOALS = " $(MAKECMDGOALS))
+#$(info "dot-config = " $(dot-config))
+#$(info "config-targets = " $(config-targets))
+
 ifneq ($(filter $(no-dot-config-targets), $(MAKECMDGOALS)),)
 	ifeq ($(filter-out $(no-dot-config-targets), $(MAKECMDGOALS)),)
 		dot-config := 0
@@ -276,6 +304,12 @@ ifeq ($(mixed-targets),1)
 # We're called with mixed targets (*config and build targets).
 # Handle them one by one.
 
+# "%:": 万用规则：%，可以用万用规则来匹配所有没有定义的目标，
+# 如果加上FORCE伪目录则会无条件执行，即使该目标对应的文件/目录已经存在。
+# 但万用规则会影响make的性能，因为所有没有定义的目标（包括隐含规则的依赖）
+# 都要进入该万用规则。
+
+## 当一个模式规则的目标为“%”（它可以匹配任何文件名）时，我们称这个规则为万用规则。
 %:: FORCE
 	$(Q)$(MAKE) -C $(srctree) KBUILD_SRC= $@
 
@@ -290,6 +324,8 @@ ifeq ($(config-targets),1)
 # used for 'make defconfig'
 #include $(srctree)/arch/$(SRCARCH)/Makefile
 export KBUILD_DEFCONFIG KBUILD_KCONFIG
+#$(info KBUILD_DEFCONFIG=$(KBUILD_DEFCONFIG))
+#$(info KBUILD_KCONFIG=$(KBUILD_KCONFIG))
 
 config: scripts_basic outputmakefile FORCE
 	$(Q)mkdir -p include/linux include/config
@@ -323,6 +359,7 @@ include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
 
 
 else
+# 需要虚拟目标，因为用作先决条件
 # Dummy target needed, because used as prerequisite
 include/config/auto.conf: ;
 endif # $(dot-config)
@@ -331,41 +368,47 @@ endif # $(dot-config)
 # The all: target is the default when no target is given on the
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
-# Defaults to vmlinux, but the arch makefile usually adds further targets
-all: vmlinux
+# Defaults to ddrc, but the arch makefile usually adds further targets
+all: ddrc
 
 
 objs-y		:= main
 libs-y		:= lib
 
-vmlinux-dirs	:= $(objs-y) $(libs-y)
-vmlinux-objs	:= $(patsubst %,%/built-in.o, $(objs-y))
-vmlinux-libs	:= $(patsubst %,%/lib.a, $(libs-y))
-vmlinux-all	:= $(vmlinux-objs) $(vmlinux-libs)
+ddrc-dirs	:= $(objs-y) $(libs-y)
+ddrc-objs	:= $(patsubst %,%/built-in.o, $(objs-y))
+ddrc-libs	:= $(patsubst %,%/libddr.a, $(libs-y))
+ddrc-all	:= $(ddrc-objs) $(ddrc-libs)
 
-# Do modpost on a prelinked vmlinux. The finally linked vmlinux has
+#$(info ddrc-dirs=$(ddrc-dirs))
+#$(info ddrc-objs=$(ddrc-objs))
+#$(info ddrc-libs=$(ddrc-libs))
+#$(info ddrc-all=$(ddrc-all))
+
+# Do modpost on a prelinked ddrc. The finally linked ddrc has
 # relevant sections renamed as per the linker script.
-quiet_cmd_vmlinux = LD      $@
-      cmd_vmlinux = $(CC) $(LDFLAGS) -o $@                          \
-      -Wl,--start-group $(vmlinux-libs) $(vmlinux-objs) -Wl,--end-group
+quiet_cmd_ddrc = LD      $@
+      cmd_ddrc = $(CC) $(LDFLAGS) -o $@                          \
+      -Wl,--start-group $(ddrc-libs) $(ddrc-objs) -Wl,--end-group
 
-vmlinux: $(vmlinux-all)
-	$(call if_changed,vmlinux)
+# $(ddrc-all) = main/built-in.o lib/lib.a
+ddrc: $(ddrc-all)
+	$(call if_changed,ddrc)
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
-$(sort $(vmlinux-all)): $(vmlinux-dirs) ;
+$(sort $(ddrc-all)): $(ddrc-dirs) ;
 
-# Handle descending into subdirectories listed in $(vmlinux-dirs)
+# Handle descending into subdirectories listed in $(ddrc-dirs)
 # Preset locale variables to speed up the build process. Limit locale
 # tweaks to this spot to avoid wrong language settings when running
 # make menuconfig etc.
 # Error messages still appears in the original language
 
-#PHONY += $(vmlinux-dirs)
-#$(vmlinux-dirs): prepare scripts
-PHONY += $(vmlinux-dirs)
-$(vmlinux-dirs): scripts_basic
+#PHONY += $(ddrc-dirs)
+#$(ddrc-dirs): prepare scripts
+PHONY += $(ddrc-dirs)
+$(ddrc-dirs): scripts_basic
 	$(Q)$(MAKE) $(build)=$@
 
 
@@ -378,7 +421,7 @@ $(vmlinux-dirs): scripts_basic
 
 # Directories & files removed with 'make clean'
 CLEAN_DIRS  +=
-CLEAN_FILES +=	vmlinux
+CLEAN_FILES +=	ddrc
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include/generated
@@ -388,7 +431,7 @@ MRPROPER_FILES += .config .config.old tags TAGS cscope* GPATH GTAGS GRTAGS GSYMS
 #
 clean: rm-dirs  := $(CLEAN_DIRS)
 clean: rm-files := $(CLEAN_FILES)
-clean-dirs      := $(addprefix _clean_, $(vmlinux-dirs))
+clean-dirs      := $(addprefix _clean_, $(ddrc-dirs))
 
 PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
@@ -457,7 +500,7 @@ help:
 	@echo  ''
 	@echo  'Other generic targets:'
 	@echo  '  all		  - Build all targets marked with [*]'
-	@echo  '* vmlinux	  	  - Build the application'
+	@echo  '* ddrc	  	  - Build the application'
 	@echo  '  dir/            - Build all files in dir and below'
 	@echo  '  dir/file.[oisS] - Build specified target only'
 	@echo  '  dir/file.lst    - Build specified mixed source/assembly target only'
@@ -475,13 +518,8 @@ help:
 	@echo  '  includecheck    - Check for duplicate included header files'
 	@echo  '  export_report   - List the usages of all exported symbols'
 	@echo  '  headers_check   - Sanity check on exported headers'
-#	@$(MAKE) -f $(srctree)/scripts/Makefile.help checker-help
 	@echo  ''
-#	@echo  'Kernel packaging:'
-#	@$(MAKE) $(build)=$(package-dir) help
 	@echo  ''
-#	@echo  'Documentation targets:'
-#	@$(MAKE) -f $(srctree)/Documentation/DocBook/Makefile dochelp
 	@echo  ''
 	@echo  '  make V=0|1 [targets] 0 => quiet build (default), 1 => verbose build'
 	@echo  '  make V=2   [targets] 2 => give reason for rebuild of target'
@@ -504,6 +542,7 @@ endif	# skip-makefile
 
 PHONY += FORCE
 FORCE:
+
 
 # Declare the contents of the .PHONY variable as phony.  We keep that
 # information in a variable so we can use it in if_changed and friends.

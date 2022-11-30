@@ -13,3 +13,4 @@ config CROSS_COMPILE
 	  directory to select the cross-compiler automatically.
 
 source "lib/Kconfig"
+source "main/Kconfig"

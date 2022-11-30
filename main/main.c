@@ -89,10 +89,16 @@ static int rbtree_insert(struct rb_root *root, struct node *node)
 	return 0;
 }
 
+extern int func(void);
+extern int funcb(void);
+
 int main(void)
 {
 	struct node *np, *n;
 	struct rb_node *node;
+
+	func();
+	funcb();
 
 	/* Insert rb_node */
 	rbtree_insert(&BiscuitOS_rb, &node0);

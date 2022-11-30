@@ -3,6 +3,7 @@
 # ==========================================================================
 
 src := $(obj)
+# ##$(info obj=$(obj))
 
 PHONY := __build
 __build:
@@ -30,6 +31,7 @@ subdir-ccflags-y :=
 # Read auto.conf if it exists, otherwise ignore
 -include include/config/auto.conf
 
+# kbuild: Generic definitions
 include scripts/Kbuild.include
 
 # For backward compatibility check that these variables do not change
@@ -39,7 +41,10 @@ save-cflags := $(CFLAGS)
 kbuild-dir := $(if $(filter /%,$(src)),$(src),$(srctree)/$(src))
 kbuild-file := $(if $(wildcard $(kbuild-dir)/Kbuild),$(kbuild-dir)/Kbuild,$(kbuild-dir)/Makefile)
 include $(kbuild-file)
+# ##$(info kbuild-file=$(kbuild-file))
 
+# ##$(info save-cflags=$(save-cflags))
+# ##$(info CFLAGS=$(CFLAGS))
 # If the save-* variables changed error out
 ifeq ($(KBUILD_NOPEDANTIC),)
         ifneq ("$(save-cflags)","$(CFLAGS)")
@@ -56,48 +61,50 @@ endif
 #
 # $(call cc-option, -W...) handles gcc -W.. options which
 # are not supported by all versions of the compiler
-ifdef KBUILD_ENABLE_EXTRA_GCC_CHECKS
-warning-  := $(empty)
 
-warning-1 := -Wextra -Wunused -Wno-unused-parameter
-warning-1 += -Wmissing-declarations
-warning-1 += -Wmissing-format-attribute
-warning-1 += -Wmissing-prototypes
-warning-1 += -Wold-style-definition
-warning-1 += $(call cc-option, -Wmissing-include-dirs)
-warning-1 += $(call cc-option, -Wunused-but-set-variable)
+# ifdef KBUILD_ENABLE_EXTRA_GCC_CHECKS
+# warning-  := $(empty)
 
-warning-2 := -Waggregate-return
-warning-2 += -Wcast-align
-warning-2 += -Wdisabled-optimization
-warning-2 += -Wnested-externs
-warning-2 += -Wshadow
-warning-2 += $(call cc-option, -Wlogical-op)
+# warning-1 := -Wextra -Wunused -Wno-unused-parameter
+# warning-1 += -Wmissing-declarations
+# warning-1 += -Wmissing-format-attribute
+# warning-1 += -Wmissing-prototypes
+# warning-1 += -Wold-style-definition
+# warning-1 += $(call cc-option, -Wmissing-include-dirs)
+# warning-1 += $(call cc-option, -Wunused-but-set-variable)
 
-warning-3 := -Wbad-function-cast
-warning-3 += -Wcast-qual
-warning-3 += -Wconversion
-warning-3 += -Wpacked
-warning-3 += -Wpadded
-warning-3 += -Wpointer-arith
-warning-3 += -Wredundant-decls
-warning-3 += -Wswitch-default
-warning-3 += $(call cc-option, -Wpacked-bitfield-compat)
-warning-3 += $(call cc-option, -Wvla)
+# warning-2 := -Waggregate-return
+# warning-2 += -Wcast-align
+# warning-2 += -Wdisabled-optimization
+# warning-2 += -Wnested-externs
+# warning-2 += -Wshadow
+# warning-2 += $(call cc-option, -Wlogical-op)
 
-warning := $(warning-$(findstring 1, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
-warning += $(warning-$(findstring 2, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
-warning += $(warning-$(findstring 3, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
+# warning-3 := -Wbad-function-cast
+# warning-3 += -Wcast-qual
+# warning-3 += -Wconversion
+# warning-3 += -Wpacked
+# warning-3 += -Wpadded
+# warning-3 += -Wpointer-arith
+# warning-3 += -Wredundant-decls
+# warning-3 += -Wswitch-default
+# warning-3 += $(call cc-option, -Wpacked-bitfield-compat)
+# warning-3 += $(call cc-option, -Wvla)
 
-ifeq ("$(strip $(warning))","")
-        $(error W=$(KBUILD_ENABLE_EXTRA_GCC_CHECKS) is unknown)
-endif
+# warning := $(warning-$(findstring 1, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
+# warning += $(warning-$(findstring 2, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
+# warning += $(warning-$(findstring 3, $(KBUILD_ENABLE_EXTRA_GCC_CHECKS)))
 
-KBUILD_CFLAGS += $(warning)
-endif
+# ifeq ("$(strip $(warning))","")
+#         $(error W=$(KBUILD_ENABLE_EXTRA_GCC_CHECKS) is unknown)
+# endif
+
+# KBUILD_CFLAGS += $(warning)
+# endif
 
 include scripts/Makefile.lib
 
+# ##$(info  hostprogs-y=$(hostprogs-y))
 # Do not include host rules unless needed
 ifneq ($(hostprogs-y),)
 include scripts/Makefile.host
@@ -118,13 +125,19 @@ endif
 
 # ===========================================================================
 
+# ##$(info lib-y=$(lib-y))
+# ##$(info lib-=$(lib-))
 ifneq ($(strip $(lib-y) $(lib-)),)
-lib-target := $(obj)/lib.a
+lib-target := $(obj)/libddr.a
 endif
 
+# ##$(info obj-y=$(obj-y))
+# ##$(info obj-=$(obj-))
 ifneq ($(strip $(obj-y) $(obj-)),)
 builtin-target := $(obj)/built-in.o
 endif
+# ##$(info builtin-target=$(builtin-target))
+# ##$(info always=$(always))
 
 __build: $(builtin-target) $(lib-target) $(extra-y) $(subdir-ym) $(always)
 	@:
@@ -261,6 +274,7 @@ FORCE:
 
 targets := $(wildcard $(sort $(targets)))
 cmd_files := $(wildcard $(foreach f,$(targets),$(dir $(f)).$(notdir $(f)).cmd))
+# ##$(info cmd_files=$(cmd_files))
 
 ifneq ($(cmd_files),)
   include $(cmd_files)

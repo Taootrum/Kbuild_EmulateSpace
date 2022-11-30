@@ -1,0 +1,5 @@
+config TS
+	bool "i am ts"
+	default n
+	help
+		xxxx
